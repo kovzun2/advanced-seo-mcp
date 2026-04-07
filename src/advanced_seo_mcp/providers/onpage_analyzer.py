@@ -1,108 +1,110 @@
-import requests
+"""On-page SEO analyzer provider."""
+
+from typing import Any
+from urllib.parse import urljoin, urlparse
+
 from bs4 import BeautifulSoup
-from urllib.parse import urlparse, urljoin
-from fake_useragent import UserAgent
-from typing import Dict, Any, List
 
-def analyze_onpage(url: str) -> Dict[str, Any]:
-    """
-    Performs a comprehensive on-page SEO analysis of a given URL.
-    """
-    if not url.startswith('http'):
-        url = 'https://' + url
+from ..http_client import SafeHTTPClient
+from ..models.common import Issue
+from ..models.onpage import OnPageResult
+from .base import BaseProvider
 
-    try:
-        ua = UserAgent()
-        headers = {'User-Agent': ua.random}
-        response = requests.get(url, headers=headers, timeout=10)
-        response.raise_for_status()
-    except Exception as e:
-        return {"error": f"Failed to fetch URL: {str(e)}"}
 
-    soup = BeautifulSoup(response.content, 'lxml')
-    
-    result = {
-        "url": url,
-        "status_code": response.status_code,
-        "load_time_ms": int(response.elapsed.total_seconds() * 1000),
-        "meta": {},
-        "headings": {},
-        "content": {},
-        "links": {},
-        "images": {}
-    }
+class OnPageAnalyzer(BaseProvider):
+    """Analyzes on-page SEO factors for a single URL."""
 
-    # Meta Tags
-    title = soup.title.string if soup.title else None
-    result["meta"]["title"] = {
-        "content": title,
-        "length": len(title) if title else 0,
-        "optimal": 30 <= len(title) <= 60 if title else False
-    }
+    def __init__(self, http_client: SafeHTTPClient):
+        super().__init__(http_client)
 
-    desc_tag = soup.find('meta', attrs={'name': 'description'})
-    description = desc_tag['content'] if desc_tag else None
-    result["meta"]["description"] = {
-        "content": description,
-        "length": len(description) if description else 0,
-        "optimal": 120 <= len(description) <= 160 if description else False
-    }
+    async def analyze(self, url: str, **kwargs: Any) -> OnPageResult | dict[str, str]:
+        """Run on-page SEO analysis."""
+        url = self._normalize_url(url)
+        issues: list[Issue] = []
 
-    result["meta"]["canonical"] = soup.find('link', rel='canonical')['href'] if soup.find('link', rel='canonical') else None
-    result["meta"]["robots"] = soup.find('meta', attrs={'name': 'robots'})['content'] if soup.find('meta', attrs={'name': 'robots'}) else "index, follow"
+        try:
+            resp = await self.http.get(url)
+        except Exception as exc:
+            return {"error": f"Failed to fetch URL: {exc}"}
 
-    # Headings
-    headings = {}
-    for i in range(1, 7):
-        tags = soup.find_all(f'h{i}')
-        headings[f'h{i}'] = [tag.get_text(strip=True) for tag in tags]
-    
-    result["headings"] = {
-        "counts": {k: len(v) for k, v in headings.items()},
-        "h1_check": "Pass" if len(headings['h1']) == 1 else "Fail (Should have exactly one H1)",
-        "structure": headings
-    }
+        soup = BeautifulSoup(resp.content, "lxml")
+        domain = urlparse(str(resp.url)).netloc
 
-    # Content
-    text = soup.get_text(separator=' ', strip=True)
-    word_count = len(text.split())
-    result["content"] = {
-        "word_count": word_count,
-        "thin_content": word_count < 300
-    }
+        # Meta tags
+        title_tag = soup.title
+        title_text = title_tag.get_text(strip=True) if title_tag else None
+        title_len = len(title_text) if title_text else 0
+        title_optimal = 30 <= title_len <= 60
 
-    # Links
-    all_links = soup.find_all('a', href=True)
-    internal_links = []
-    external_links = []
-    domain = urlparse(url).netloc
+        desc_tag = soup.find("meta", attrs={"name": "description"})
+        desc_text = desc_tag.get("content") if desc_tag else None
+        desc_len = len(desc_text) if desc_text else 0
+        desc_optimal = 120 <= desc_len <= 160
 
-    for link in all_links:
-        href = link['href']
-        full_url = urljoin(url, href)
-        parsed_href = urlparse(full_url)
-        
-        if parsed_href.netloc == domain:
-            internal_links.append(full_url)
-        else:
-            external_links.append(full_url)
+        canonical_tag = soup.find("link", rel="canonical")
+        canonical = canonical_tag.get("href") if canonical_tag else None
 
-    result["links"] = {
-        "total": len(all_links),
-        "internal": len(internal_links),
-        "external": len(external_links),
-        "internal_sample": internal_links[:5],
-        "external_sample": external_links[:5]
-    }
+        robots_tag = soup.find("meta", attrs={"name": "robots"})
+        robots = robots_tag.get("content", "index, follow") if robots_tag else "index, follow"
 
-    # Images
-    images = soup.find_all('img')
-    missing_alt = [img['src'] for img in images if not img.get('alt')]
-    
-    result["images"] = {
-        "total": len(images),
-        "missing_alt_count": len(missing_alt),
-        "missing_alt_sample": missing_alt[:5]
-    }
+        # Headings
+        h1_tags = [h.get_text(strip=True) for h in soup.find_all("h1")]
+        h2_tags = [h.get_text(strip=True) for h in soup.find_all("h2")]
 
-    return result
+        if len(h1_tags) == 0:
+            issues.append(Issue(message="No H1 tag found", severity="critical"))
+        elif len(h1_tags) > 1:
+            issues.append(Issue(message=f"Multiple H1 tags found ({len(h1_tags)})", severity="warning"))
+
+        # Content
+        text = soup.get_text(separator=" ", strip=True)
+        word_count = len(text.split())
+        thin = word_count < 300
+        if thin:
+            issues.append(Issue(message=f"Thin content: only {word_count} words", severity="warning"))
+
+        # Links
+        all_links = soup.find_all("a", href=True)
+        internal = 0
+        external = 0
+        for link in all_links:
+            href = link["href"]
+            full = urljoin(str(resp.url), href)
+            parsed = urlparse(full)
+            if parsed.scheme in ("http", "https"):
+                if parsed.netloc == domain:
+                    internal += 1
+                else:
+                    external += 1
+
+        # Images
+        images = soup.find_all("img")
+        missing_alt = sum(1 for img in images if not img.get("alt"))
+        if missing_alt > 0:
+            issues.append(Issue(message=f"{missing_alt} images missing alt text", severity="info"))
+
+        return OnPageResult(
+            url=str(resp.url),
+            status_code=resp.status_code,
+            response_time_ms=resp.elapsed.total_seconds() * 1000,
+            meta_title=title_text,
+            meta_title_length=title_len,
+            meta_title_optimal=title_optimal,
+            meta_description=desc_text,
+            meta_description_length=desc_len,
+            meta_description_optimal=desc_optimal,
+            canonical=canonical,
+            robots=robots,
+            h1_count=len(h1_tags),
+            h1_tags=h1_tags,
+            h2_count=len(h2_tags),
+            h2_tags=h2_tags,
+            word_count=word_count,
+            thin_content=thin,
+            total_links=len(all_links),
+            internal_links=internal,
+            external_links=external,
+            total_images=len(images),
+            images_missing_alt=missing_alt,
+            issues=issues,
+        )
