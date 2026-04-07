@@ -1,0 +1,121 @@
+{
+  "kind": "pagespeedonline#result",
+  "id": "https://example.com",
+  "loadingExperience": {
+    "metrics": {
+      "FIRST_CONTENTFUL_PAINT_MS": {
+        "percentile": 1200,
+        "distributions": [
+          {"min": 0, "max": 1800, "proportion": 0.75},
+          {"min": 1800, "max": 3000, "proportion": 0.15},
+          {"min": 3000, "proportion": 0.10}
+        ],
+        "category": "FAST"
+      },
+      "LARGEST_CONTENTFUL_PAINT_MS": {
+        "percentile": 2100,
+        "distributions": [
+          {"min": 0, "max": 2500, "proportion": 0.65},
+          {"min": 2500, "max": 4000, "proportion": 0.20},
+          {"min": 4000, "proportion": 0.15}
+        ],
+        "category": "AVERAGE"
+      },
+      "CUMULATIVE_LAYOUT_SHIFT_SCORE": {
+        "percentile": 50,
+        "distributions": [
+          {"min": 0, "max": 100, "proportion": 0.80},
+          {"min": 100, "max": 250, "proportion": 0.12},
+          {"min": 250, "proportion": 0.08}
+        ],
+        "category": "FAST"
+      }
+    },
+    "overall_category": "AVERAGE"
+  },
+  "lighthouseResult": {
+    "requestedUrl": "https://example.com",
+    "finalUrl": "https://example.com",
+    "lighthouseVersion": "10.4.0",
+    "categories": {
+      "performance": {
+        "id": "performance",
+        "title": "Performance",
+        "score": 0.75
+      },
+      "accessibility": {
+        "id": "accessibility",
+        "title": "Accessibility",
+        "score": 0.92
+      },
+      "best-practices": {
+        "id": "best-practices",
+        "title": "Best Practices",
+        "score": 0.85
+      },
+      "seo": {
+        "id": "seo",
+        "title": "SEO",
+        "score": 0.95
+      }
+    },
+    "audits": {
+      "first-contentful-paint": {
+        "id": "first-contentful-paint",
+        "title": "First Contentful Paint",
+        "description": "First Contentful Paint marks the time at which the first text or image is painted.",
+        "score": 0.85,
+        "scoreDisplayMode": "numeric",
+        "numericValue": 1200,
+        "numericUnit": "millisecond",
+        "displayValue": "1.2 s"
+      },
+      "largest-contentful-paint": {
+        "id": "largest-contentful-paint",
+        "title": "Largest Contentful Paint",
+        "description": "Largest Contentful Paint marks the time at which the largest text or image is painted.",
+        "score": 0.65,
+        "scoreDisplayMode": "numeric",
+        "numericValue": 2100,
+        "numericUnit": "millisecond",
+        "displayValue": "2.1 s"
+      },
+      "speed-index": {
+        "id": "speed-index",
+        "title": "Speed Index",
+        "score": 0.78,
+        "scoreDisplayMode": "numeric",
+        "numericValue": 2500,
+        "numericUnit": "millisecond",
+        "displayValue": "2.5 s"
+      },
+      "total-blocking-time": {
+        "id": "total-blocking-time",
+        "title": "Total Blocking Time",
+        "score": 0.70,
+        "scoreDisplayMode": "numeric",
+        "numericValue": 300,
+        "numericUnit": "millisecond",
+        "displayValue": "300 ms"
+      },
+      "cumulative-layout-shift": {
+        "id": "cumulative-layout-shift",
+        "title": "Cumulative Layout Shift",
+        "score": 0.90,
+        "scoreDisplayMode": "numeric",
+        "numericValue": 0.05,
+        "displayValue": "0.05"
+      },
+      "server-response-time": {
+        "id": "server-response-time",
+        "title": "Initial server response time was short",
+        "score": 1,
+        "scoreDisplayMode": "binary",
+        "numericValue": 150,
+        "numericUnit": "millisecond",
+        "displayValue": "Root document took 150 ms"
+      }
+    }
+  },
+  "analysisUTCTimestamp": "2024-01-15T10:30:00.000Z"
+}

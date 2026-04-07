@@ -1,49 +1,28 @@
 # Python
 __pycache__/
 *.py[cod]
-*$py.class
-*.so
-.Python
-env/
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-pip-log.txt
-pip-delete-this-directory.txt
-status.lib
-.installed.cfg
-*.egg
 *.egg-info/
-
-# Virtual Environment
+dist/
 .venv/
-venv/
-ENV/
 
-# Configuration & Secrets
+# Worktrees
+.worktrees/
+
+# Environment
 .env
-.env.local
-.clasprc.json
+*.env
 
-# Local Cache Database
-*.db
-*.db-journal
+# Cache
+.advanced_seo_mcp_cache.db
 
-# Reports & Logs
+# Reports (generated)
 reports/
-*.log
 
-# IDEs
+# IDE
 .vscode/
 .idea/
-.cursor/
-.worktrees/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
