@@ -1,100 +1,94 @@
-import requests
-from urllib.parse import urlparse, urljoin
-from fake_useragent import UserAgent
-from typing import Dict, Any
+"""Technical SEO auditor provider."""
 
-def check_technical_health(url: str) -> Dict[str, Any]:
-    """
-    Performs a technical SEO audit of a given domain or URL.
-    
-    This function checks for the existence of critical technical SEO files
-    and security headers. Specifically, it validates:
-    
-    1. **robots.txt**: Checks if it exists and returns the file size.
-    2. **sitemap.xml**: Scans common paths (e.g., /sitemap.xml, /sitemap_index.xml) 
-       to find a valid sitemap.
-    3. **Security Headers**:
-        - Checks for HTTPS enforcement.
-        - Checks for HSTS (Strict-Transport-Security).
-        - Checks for Clickjacking protection (X-Frame-Options).
-        - Checks for MIME-type sniffing protection (X-Content-Type-Options).
+from typing import Any
+from urllib.parse import urlparse
 
-    Args:
-        url (str): The URL or domain to audit (e.g., "https://example.com" or "example.com").
+from ..http_client import SafeHTTPClient
+from ..models.common import Issue
+from ..models.technical import TechnicalAudit
+from .base import BaseProvider
 
-    Returns:
-        Dict[str, Any]: A dictionary containing the results of the audit:
-            {
-                "url": str,
-                "robots_txt": {"exists": bool, "url": str, "size": int},
-                "sitemap": {"found": bool, "url": str},
-                "security": {
-                    "https": bool,
-                    "hsts": bool,
-                    "x_frame_options": str,
-                    "x_content_type_options": str
-                }
-            }
-    """
-    if not url.startswith('http'):
-        url = 'https://' + url
-    
-    parsed = urlparse(url)
-    base_url = f"{parsed.scheme}://{parsed.netloc}"
-    
-    ua = UserAgent()
-    headers = {'User-Agent': ua.random}
-    
-    result = {
-        "url": url,
-        "robots_txt": {},
-        "sitemap": {},
-        "security": {}
-    }
 
-    # Check robots.txt
-    robots_url = urljoin(base_url, '/robots.txt')
-    try:
-        r_resp = requests.get(robots_url, headers=headers, timeout=5)
-        result["robots_txt"] = {
-            "exists": r_resp.status_code == 200,
-            "url": robots_url,
-            "size": len(r_resp.content) if r_resp.status_code == 200 else 0
-        }
-    except:
-        result["robots_txt"] = {"exists": False, "error": "Request failed"}
+class TechnicalAuditor(BaseProvider):
+    """Checks technical SEO factors: robots.txt, sitemap, security headers."""
 
-    # Check sitemap.xml
-    # Common locations to check
-    sitemap_candidates = ['/sitemap.xml', '/sitemap_index.xml', '/wp-sitemap.xml']
-    found_sitemap = None
-    
-    for path in sitemap_candidates:
-        sitemap_url = urljoin(base_url, path)
+    def __init__(self, http_client: SafeHTTPClient):
+        super().__init__(http_client)
+
+    async def analyze(self, url: str, **kwargs: Any) -> TechnicalAudit:
+        """Run technical SEO audit."""
+        url = self._normalize_url(url)
+        parsed = urlparse(url)
+        base = f"{parsed.scheme}://{parsed.netloc}"
+        issues: list[Issue] = []
+        score = 100
+
+        # robots.txt
+        has_robots = False
+        robots_size = 0
         try:
-            s_resp = requests.head(sitemap_url, headers=headers, timeout=5)
-            if s_resp.status_code == 200:
-                found_sitemap = sitemap_url
-                break
-        except:
-            continue
-            
-    result["sitemap"] = {
-        "found": found_sitemap is not None,
-        "url": found_sitemap if found_sitemap else "Not found in common locations"
-    }
+            resp = await self.http.get(f"{base}/robots.txt")
+            has_robots = resp.status_code == 200
+            robots_size = len(resp.content) if has_robots else 0
+        except Exception:
+            issues.append(Issue(message="robots.txt not found", severity="warning"))
+            score -= 10
 
-    # Security Headers
-    try:
-        resp = requests.head(url, headers=headers, timeout=5)
-        sec_headers = resp.headers
-        result["security"] = {
-            "https": parsed.scheme == 'https',
-            "hsts": 'Strict-Transport-Security' in sec_headers,
-            "x_frame_options": sec_headers.get('X-Frame-Options', 'Missing'),
-            "x_content_type_options": sec_headers.get('X-Content-Type-Options', 'Missing')
-        }
-    except:
-        result["security"] = {"error": "Could not fetch headers"}
+        # sitemap.xml
+        has_sitemap = False
+        sitemap_url = None
+        for path in ["/sitemap.xml", "/sitemap_index.xml", "/wp-sitemap.xml"]:
+            try:
+                resp = await self.http.head(f"{base}{path}")
+                if resp.status_code == 200:
+                    has_sitemap = True
+                    sitemap_url = f"{base}{path}"
+                    break
+            except Exception:
+                continue
+        if not has_sitemap:
+            issues.append(Issue(message="No sitemap found", severity="warning"))
+            score -= 10
 
-    return result
+        # Security headers
+        https = parsed.scheme == "https"
+        hsts = False
+        x_frame = None
+        xcto = None
+
+        try:
+            resp = await self.http.head(url)
+            hsts = "strict-transport-security" in resp.headers
+            x_frame = resp.headers.get("X-Frame-Options")
+            xcto = resp.headers.get("X-Content-Type-Options")
+        except Exception:
+            issues.append(Issue(message="Could not fetch headers", severity="info"))
+
+        if not https:
+            issues.append(Issue(message="HTTPS not enabled", severity="critical"))
+            score -= 25
+        if not hsts:
+            issues.append(Issue(message="HSTS header missing", severity="warning"))
+            score -= 10
+        if not x_frame:
+            issues.append(Issue(message="X-Frame-Options missing", severity="info"))
+            score -= 5
+        if not xcto:
+            issues.append(Issue(message="X-Content-Type-Options missing", severity="info"))
+            score -= 5
+
+        score = max(0, score)
+
+        return TechnicalAudit(
+            domain=parsed.netloc,
+            has_robots_txt=has_robots,
+            robots_txt_size=robots_size,
+            has_sitemap=has_sitemap,
+            sitemap_url=sitemap_url,
+            https_enabled=https,
+            hsts_enabled=hsts,
+            x_frame_options=x_frame,
+            x_content_type_options=xcto,
+            issues=issues,
+            score=score,
+        )
