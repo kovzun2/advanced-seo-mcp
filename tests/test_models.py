@@ -9,6 +9,7 @@ from advanced_seo_mcp.models.technical import TechnicalAudit
 from advanced_seo_mcp.models.psi import PageSpeedResult
 from advanced_seo_mcp.models.report import SEOReport
 from advanced_seo_mcp.models.common import Issue
+from advanced_seo_mcp.models.ahrefs import BacklinkEntry, BacklinkData
 
 
 def test_onpage_result_valid():
@@ -136,4 +137,52 @@ def test_report_overall_score_range():
         SEOReport(
             generated_at=datetime.now(), url="https://x.com", domain="x.com",
             overall_score=-1, summary="test"
+        )
+
+
+def test_backlink_entry_valid():
+    entry = BacklinkEntry(
+        anchor="test link",
+        domain_rating=50,
+        url_from="https://referrer.com/page",
+        url_to="https://example.com/",
+        title="Referring Page",
+    )
+    assert entry.domain_rating == 50
+
+
+def test_backlink_entry_domain_rating_range():
+    with pytest.raises(ValidationError):
+        BacklinkEntry(
+            anchor="x", domain_rating=101,
+            url_from="http://a.com", url_to="http://b.com"
+        )
+    with pytest.raises(ValidationError):
+        BacklinkEntry(
+            anchor="x", domain_rating=-1,
+            url_from="http://a.com", url_to="http://b.com"
+        )
+
+
+def test_backlink_data_valid():
+    data = BacklinkData(
+        domain="example.com",
+        domain_rating=50,
+        total_backlinks=1000,
+        referring_domains=200,
+    )
+    assert data.domain == "example.com"
+    assert data.total_backlinks == 1000
+
+
+def test_page_speed_score_boundaries():
+    with pytest.raises(ValidationError):
+        PageSpeedResult(
+            strategy="mobile", performance_score=101, seo_score=50,
+            lcp="2s", fcp="1s", cls="0.1", inp="100ms"
+        )
+    with pytest.raises(ValidationError):
+        PageSpeedResult(
+            strategy="mobile", performance_score=-1, seo_score=50,
+            lcp="2s", fcp="1s", cls="0.1", inp="100ms"
         )
