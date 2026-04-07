@@ -1,56 +1,57 @@
-import requests
-import os
-from typing import Dict, Any, Optional
+"""Google PageSpeed Insights analyzer provider."""
 
-def analyze_speed(url: str, strategy: str = "mobile") -> Dict[str, Any]:
-    """
-    Analyzes URL performance using Google PageSpeed Insights API.
-    
-    Args:
-        url: The URL to analyze.
-        strategy: 'mobile' or 'desktop' (default: 'mobile').
-        
-    Returns:
-        Dictionary containing Core Web Vitals and Performance Score.
-    """
-    api_key = os.environ.get("GOOGLE_PSI_API_KEY")
-    if not api_key:
-        return {"error": "GOOGLE_PSI_API_KEY is missing in .env file"}
+from typing import Any
 
-    endpoint = "https://www.googleapis.com/pagespeedonline/v5/runPagespeed"
-    params = {
-        "url": url,
-        "strategy": strategy,
-        "key": api_key,
-        "category": ["performance", "seo"]
-    }
+from ..config import get_settings
+from ..http_client import SafeHTTPClient
+from ..models.psi import PageSpeedResult
+from .base import BaseProvider
 
-    try:
-        resp = requests.get(endpoint, params=params, timeout=60)
-        resp.raise_for_status()
-        data = resp.json()
-        
+
+class PSIAnalyzer(BaseProvider):
+    """Analyzes page speed via Google PageSpeed Insights API."""
+
+    def __init__(self, http_client: SafeHTTPClient):
+        super().__init__(http_client)
+
+    async def analyze(self, url: str, strategy: str = "mobile", **kwargs: Any) -> PageSpeedResult | dict[str, str]:
+        """Run PageSpeed analysis."""
+        url = self._normalize_url(url)
+        settings = get_settings()
+
+        if not settings.has_psi:
+            return {"error": "GOOGLE_PSI_API_KEY not configured — get one at https://developers.google.com/speed/docs/insights/v5/get-started"}
+
+        endpoint = "https://www.googleapis.com/pagespeedonline/v5/runPagespeed"
+        params = {
+            "url": url,
+            "strategy": strategy,
+            "key": settings.google_psi_api_key,
+            "category": ["performance", "seo"],
+        }
+
+        try:
+            resp = await self.http.get(endpoint, params=params)
+            data = resp.json()
+        except Exception as exc:
+            return {"error": f"PageSpeed API error: {exc}"}
+
         lighthouse = data.get("lighthouseResult", {})
         audits = lighthouse.get("audits", {})
         categories = lighthouse.get("categories", {})
-        
-        # Helper to get numeric value safely
-        def get_metric(name):
+
+        def get_val(name: str) -> str:
             return audits.get(name, {}).get("displayValue", "N/A")
-            
-        result = {
-            "strategy": strategy,
-            "performance_score": int(categories.get("performance", {}).get("score", 0) * 100),
-            "seo_score": int(categories.get("seo", {}).get("score", 0) * 100),
-            "core_web_vitals": {
-                "lcp": get_metric("largest-contentful-paint"),
-                "fcp": get_metric("first-contentful-paint"),
-                "cls": get_metric("cumulative-layout-shift"),
-                "inp": get_metric("interaction-to-next-paint") # Interaction to Next Paint
-            },
-            "screenshot": lighthouse.get("audits", {}).get("final-screenshot", {}).get("details", {}).get("data")
-        }
-        return result
-        
-    except Exception as e:
-        return {"error": f"PageSpeed Analysis Failed: {str(e)}"}
+
+        perf_score = categories.get("performance", {}).get("score", 0)
+        seo_score = categories.get("seo", {}).get("score", 0)
+
+        return PageSpeedResult(
+            strategy=strategy,
+            performance_score=int(perf_score * 100),
+            seo_score=int(seo_score * 100),
+            lcp=get_val("largest-contentful-paint"),
+            fcp=get_val("first-contentful-paint"),
+            cls=get_val("cumulative-layout-shift"),
+            inp=get_val("interaction-to-next-paint"),
+        )
