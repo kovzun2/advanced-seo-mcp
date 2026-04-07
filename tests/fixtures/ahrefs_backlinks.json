@@ -1,39 +1,16 @@
 {
-  "backlinks": [
-    {
-      "url_from": "https://example-site1.com/page1",
-      "url_to": "https://example.com/target-page",
-      "anchor": "best SEO tools",
-      "domain_rating": 45,
-      "url_rating": 12,
-      "first_seen": "2024-01-10",
-      "last_seen": "2024-03-15",
-      "link_type": "dofollow",
-      "referring_page_title": "Top SEO Tools for 2024"
-    },
-    {
-      "url_from": "https://example-site2.com/blog/post",
-      "url_to": "https://example.com/home",
-      "anchor": "example.com",
-      "domain_rating": 62,
-      "url_rating": 28,
-      "first_seen": "2023-11-05",
-      "last_seen": "2024-03-14",
-      "link_type": "dofollow",
-      "referring_page_title": "Recommended Websites"
-    },
-    {
-      "url_from": "https://example-site3.com/resources",
-      "url_to": "https://example.com/guide",
-      "anchor": "comprehensive guide",
-      "domain_rating": 38,
-      "url_rating": 8,
-      "first_seen": "2024-02-20",
-      "last_seen": "2024-03-13",
-      "link_type": "nofollow",
-      "referring_page_title": "Helpful Resources"
-    }
-  ],
-  "total_backlinks": 3,
-  "referring_domains": 3
+    "backlinks": [
+        {
+            "anchor": "test link",
+            "domain_rating": 30,
+            "url_from": "https://referrer.com/page",
+            "url_to": "https://example.com/",
+            "url_to_title": "Referring Page",
+            "target": {
+                "domain_rating": 50
+            }
+        }
+    ],
+    "backlinks_count": 1000,
+    "referring_domains_count": 200
 }
