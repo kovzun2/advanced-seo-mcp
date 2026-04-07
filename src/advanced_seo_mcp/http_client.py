@@ -45,12 +45,34 @@ class RateLimiter:
 
 
 def _is_private_ip(host: str) -> bool:
-    """Check if a hostname resolves to a private IP address."""
+    """Check if a hostname resolves to a private IP address.
+
+    Handles both literal IP addresses and hostnames (via DNS resolution).
+    """
+    import socket
+
+    # First check if it's a literal IP
     try:
         ip = ipaddress.ip_address(host)
         return any(ip in net for net in _PRIVATE_NETWORKS)
     except ValueError:
-        return False
+        pass
+
+    # Try to resolve the hostname and check all returned IPs
+    try:
+        infos = socket.getaddrinfo(host, None)
+        for info in infos:
+            ip_str = info[4][0]
+            try:
+                ip = ipaddress.ip_address(ip_str)
+                if any(ip in net for net in _PRIVATE_NETWORKS):
+                    return True
+            except ValueError:
+                continue
+    except socket.gaierror:
+        pass  # DNS resolution failed — will be caught by httpx
+
+    return False
 
 
 def validate_url(url: str) -> str:
