@@ -46,3 +46,4 @@ reports/
 .vscode/
 .idea/
 .cursor/
+.worktrees/
