@@ -22,7 +22,9 @@ def analyzer(http_client: SafeHTTPClient) -> ContentAnalyzer:
 @pytest.mark.anyio
 async def test_keyword_density(analyzer: ContentAnalyzer):
     html = "<html><body><p>python programming python coding python development</p></body></html>"
-    respx.get("https://example.com/page").mock(return_value=httpx.Response(200, text=html))
+    respx.get("https://example.com/page").mock(
+        return_value=httpx.Response(200, text=html)
+    )
     result = await analyzer.analyze("https://example.com/page", target_keyword="python")
     assert result["target_analysis"] is not None
     assert result["target_analysis"]["keyword"] == "python"

@@ -79,16 +79,25 @@ def test_technical_audit_valid():
 def test_technical_audit_score_range():
     with pytest.raises(ValidationError):
         TechnicalAudit(
-            domain="x.com", has_robots_txt=True, has_sitemap=True,
-            https_enabled=True, hsts_enabled=True, score=101
+            domain="x.com",
+            has_robots_txt=True,
+            has_sitemap=True,
+            https_enabled=True,
+            hsts_enabled=True,
+            score=101,
         )
 
 
 def test_page_speed_strategy_validation():
     with pytest.raises(ValidationError):
         PageSpeedResult(
-            strategy="tablet", performance_score=50, seo_score=50,
-            lcp="2s", fcp="1s", cls="0.1", inp="100ms"
+            strategy="tablet",
+            performance_score=50,
+            seo_score=50,
+            lcp="2s",
+            fcp="1s",
+            cls="0.1",
+            inp="100ms",
         )
 
 
@@ -97,7 +106,7 @@ def test_issue_severity_validation():
     Issue(message="Test", severity="critical")
     Issue(message="Test", severity="warning")
     Issue(message="Test", severity="info")
-    
+
     # Invalid should fail
     with pytest.raises(ValidationError):
         Issue(message="Test", severity="high")
@@ -109,16 +118,32 @@ def test_report_with_all_sections():
         url="https://example.com",
         domain="example.com",
         onpage=OnPageResult(
-            url="https://example.com", status_code=200, response_time_ms=100.0,
-            meta_title="Test", meta_title_length=4, meta_title_optimal=False,
-            meta_description=None, meta_description_length=0, meta_description_optimal=False,
-            h1_count=1, h2_count=0, word_count=200, thin_content=False,
-            total_links=0, internal_links=0, external_links=0,
-            total_images=0, images_missing_alt=0,
+            url="https://example.com",
+            status_code=200,
+            response_time_ms=100.0,
+            meta_title="Test",
+            meta_title_length=4,
+            meta_title_optimal=False,
+            meta_description=None,
+            meta_description_length=0,
+            meta_description_optimal=False,
+            h1_count=1,
+            h2_count=0,
+            word_count=200,
+            thin_content=False,
+            total_links=0,
+            internal_links=0,
+            external_links=0,
+            total_images=0,
+            images_missing_alt=0,
         ),
         technical=TechnicalAudit(
-            domain="example.com", has_robots_txt=True, has_sitemap=True,
-            https_enabled=True, hsts_enabled=True, score=80,
+            domain="example.com",
+            has_robots_txt=True,
+            has_sitemap=True,
+            https_enabled=True,
+            hsts_enabled=True,
+            score=80,
         ),
         overall_score=75,
         summary="Good overall, needs meta improvements.",
@@ -130,13 +155,19 @@ def test_report_with_all_sections():
 def test_report_overall_score_range():
     with pytest.raises(ValidationError):
         SEOReport(
-            generated_at=datetime.now(), url="https://x.com", domain="x.com",
-            overall_score=101, summary="test"
+            generated_at=datetime.now(),
+            url="https://x.com",
+            domain="x.com",
+            overall_score=101,
+            summary="test",
         )
     with pytest.raises(ValidationError):
         SEOReport(
-            generated_at=datetime.now(), url="https://x.com", domain="x.com",
-            overall_score=-1, summary="test"
+            generated_at=datetime.now(),
+            url="https://x.com",
+            domain="x.com",
+            overall_score=-1,
+            summary="test",
         )
 
 
@@ -154,13 +185,14 @@ def test_backlink_entry_valid():
 def test_backlink_entry_domain_rating_range():
     with pytest.raises(ValidationError):
         BacklinkEntry(
-            anchor="x", domain_rating=101,
-            url_from="http://a.com", url_to="http://b.com"
+            anchor="x",
+            domain_rating=101,
+            url_from="http://a.com",
+            url_to="http://b.com",
         )
     with pytest.raises(ValidationError):
         BacklinkEntry(
-            anchor="x", domain_rating=-1,
-            url_from="http://a.com", url_to="http://b.com"
+            anchor="x", domain_rating=-1, url_from="http://a.com", url_to="http://b.com"
         )
 
 
@@ -178,11 +210,21 @@ def test_backlink_data_valid():
 def test_page_speed_score_boundaries():
     with pytest.raises(ValidationError):
         PageSpeedResult(
-            strategy="mobile", performance_score=101, seo_score=50,
-            lcp="2s", fcp="1s", cls="0.1", inp="100ms"
+            strategy="mobile",
+            performance_score=101,
+            seo_score=50,
+            lcp="2s",
+            fcp="1s",
+            cls="0.1",
+            inp="100ms",
         )
     with pytest.raises(ValidationError):
         PageSpeedResult(
-            strategy="mobile", performance_score=-1, seo_score=50,
-            lcp="2s", fcp="1s", cls="0.1", inp="100ms"
+            strategy="mobile",
+            performance_score=-1,
+            seo_score=50,
+            lcp="2s",
+            fcp="1s",
+            cls="0.1",
+            inp="100ms",
         )

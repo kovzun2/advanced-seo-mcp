@@ -31,18 +31,22 @@ class SchemaValidator(BaseProvider):
             content = script.string or script.text or ""
             try:
                 data = json.loads(content)
-                results.append({
-                    "valid": True,
-                    "type": data.get("@type", "Unknown"),
-                    "context": data.get("@context", "Unknown"),
-                    "raw": data,
-                })
+                results.append(
+                    {
+                        "valid": True,
+                        "type": data.get("@type", "Unknown"),
+                        "context": data.get("@context", "Unknown"),
+                        "raw": data,
+                    }
+                )
             except json.JSONDecodeError as exc:
-                results.append({
-                    "valid": False,
-                    "error": f"JSON Decode Error: {exc}",
-                    "content_snippet": content[:50] + "..." if content else "Empty",
-                })
+                results.append(
+                    {
+                        "valid": False,
+                        "error": f"JSON Decode Error: {exc}",
+                        "content_snippet": content[:50] + "..." if content else "Empty",
+                    }
+                )
 
         return {
             "found_count": len(scripts),

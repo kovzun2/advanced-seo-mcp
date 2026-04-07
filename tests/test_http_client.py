@@ -6,7 +6,12 @@ import httpx
 import pytest
 import respx
 
-from advanced_seo_mcp.http_client import SafeHTTPClient, RateLimiter, SSRFError, validate_url
+from advanced_seo_mcp.http_client import (
+    SafeHTTPClient,
+    RateLimiter,
+    SSRFError,
+    validate_url,
+)
 
 
 def test_ssrf_blocks_private_ip():
@@ -60,9 +65,7 @@ async def test_successful_response():
 @respx.mock
 @pytest.mark.anyio
 async def test_head_fallback_on_405():
-    respx.head("https://example.com/check").mock(
-        return_value=httpx.Response(405)
-    )
+    respx.head("https://example.com/check").mock(return_value=httpx.Response(405))
     respx.get("https://example.com/check").mock(
         return_value=httpx.Response(200, text="OK")
     )

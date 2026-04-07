@@ -14,13 +14,17 @@ class PSIAnalyzer(BaseProvider):
     def __init__(self, http_client: SafeHTTPClient):
         super().__init__(http_client)
 
-    async def analyze(self, url: str, strategy: str = "mobile", **kwargs: Any) -> PageSpeedResult | dict[str, str]:
+    async def analyze(
+        self, url: str, strategy: str = "mobile", **kwargs: Any
+    ) -> PageSpeedResult | dict[str, str]:
         """Run PageSpeed analysis."""
         url = self._normalize_url(url)
         settings = get_settings()
 
         if not settings.has_psi:
-            return {"error": "GOOGLE_PSI_API_KEY not configured — get one at https://developers.google.com/speed/docs/insights/v5/get-started"}
+            return {
+                "error": "GOOGLE_PSI_API_KEY not configured — get one at https://developers.google.com/speed/docs/insights/v5/get-started"
+            }
 
         endpoint = "https://www.googleapis.com/pagespeedonline/v5/runPagespeed"
         params = {

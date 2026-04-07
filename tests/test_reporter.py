@@ -20,20 +20,37 @@ def test_markdown_formatter_creates_report(tmp_path):
         summary="Test report",
     )
     onpage = OnPageResult(
-        url="https://example.com", status_code=200, response_time_ms=100.0,
-        meta_title="Test", meta_title_length=4, meta_title_optimal=False,
-        meta_description="Desc", meta_description_length=4, meta_description_optimal=False,
-        h1_count=1, h2_count=0, word_count=200, thin_content=False,
-        total_links=0, internal_links=0, external_links=0,
-        total_images=0, images_missing_alt=0,
+        url="https://example.com",
+        status_code=200,
+        response_time_ms=100.0,
+        meta_title="Test",
+        meta_title_length=4,
+        meta_title_optimal=False,
+        meta_description="Desc",
+        meta_description_length=4,
+        meta_description_optimal=False,
+        h1_count=1,
+        h2_count=0,
+        word_count=200,
+        thin_content=False,
+        total_links=0,
+        internal_links=0,
+        external_links=0,
+        total_images=0,
+        images_missing_alt=0,
     )
     tech = TechnicalAudit(
-        domain="example.com", has_robots_txt=True, has_sitemap=True,
-        https_enabled=True, hsts_enabled=True, score=80,
+        domain="example.com",
+        has_robots_txt=True,
+        has_sitemap=True,
+        https_enabled=True,
+        hsts_enabled=True,
+        score=80,
     )
 
     formatter = MarkdownFormatter()
     import os
+
     os.chdir(tmp_path)
     path = formatter.save(report, onpage, tech)
     assert path.exists()

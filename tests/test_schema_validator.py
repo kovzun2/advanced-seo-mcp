@@ -21,10 +21,12 @@ def validator(http_client: SafeHTTPClient) -> SchemaValidator:
 @respx.mock
 @pytest.mark.anyio
 async def test_valid_schema(validator: SchemaValidator):
-    html = '''<html><head>
+    html = """<html><head>
     <script type="application/ld+json">{"@context":"https://schema.org","@type":"Organization","name":"Test"}</script>
-    </head><body></body></html>'''
-    respx.get("https://example.com/page").mock(return_value=httpx.Response(200, text=html))
+    </head><body></body></html>"""
+    respx.get("https://example.com/page").mock(
+        return_value=httpx.Response(200, text=html)
+    )
     result = await validator.analyze("https://example.com/page")
     assert result["found_count"] == 1
     assert result["has_valid_schema"] is True
@@ -34,7 +36,9 @@ async def test_valid_schema(validator: SchemaValidator):
 @respx.mock
 @pytest.mark.anyio
 async def test_no_schema(validator: SchemaValidator):
-    respx.get("https://example.com/no").mock(return_value=httpx.Response(200, text="<html></html>"))
+    respx.get("https://example.com/no").mock(
+        return_value=httpx.Response(200, text="<html></html>")
+    )
     result = await validator.analyze("https://example.com/no")
     assert result["found_count"] == 0
     assert result["has_valid_schema"] is False

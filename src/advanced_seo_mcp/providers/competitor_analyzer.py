@@ -3,7 +3,6 @@
 from typing import Any
 
 from ..http_client import SafeHTTPClient
-from ..config import get_settings
 from .base import BaseProvider
 from .ahrefs_api import AhrefsClient
 
@@ -15,7 +14,9 @@ class CompetitorAnalyzer(BaseProvider):
         super().__init__(http_client)
         self.ahrefs = ahrefs_client
 
-    async def analyze(self, url: str, competitor: str = "", **kwargs: Any) -> dict[str, Any]:
+    async def analyze(
+        self, url: str, competitor: str = "", **kwargs: Any
+    ) -> dict[str, Any]:
         """Compare two domains.
 
         Args:
@@ -36,13 +37,19 @@ class CompetitorAnalyzer(BaseProvider):
         if isinstance(d2, dict) and "error" in d2:
             return d2
 
+        # At this point d1 and d2 are BacklinkData
+        assert not isinstance(d1, dict), "Expected BacklinkData"
+        assert not isinstance(d2, dict), "Expected BacklinkData"
+
         return {
             "domains": [domain1, domain2],
             "comparison": {
                 "domain_rating": {
                     domain1: d1.domain_rating,
                     domain2: d2.domain_rating,
-                    "winner": domain1 if d1.domain_rating > d2.domain_rating else domain2,
+                    "winner": domain1
+                    if d1.domain_rating > d2.domain_rating
+                    else domain2,
                 },
                 "total_backlinks": {
                     domain1: d1.total_backlinks,

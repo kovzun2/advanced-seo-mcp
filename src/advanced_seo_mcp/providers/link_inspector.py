@@ -25,18 +25,17 @@ class LinkInspector(BaseProvider):
             return {"error": str(exc)}
 
         soup = BeautifulSoup(resp.content, "lxml")
-        domain = urlparse(str(resp.url)).netloc
         links = soup.find_all("a", href=True)
 
-        targets = set()
+        targets: set[str] = set()
         for link in links:
-            href = link["href"]
+            href = str(link["href"])
             full = urljoin(str(resp.url), href)
             parsed = urlparse(full)
             if parsed.scheme in ("http", "https"):
                 targets.add(full)
 
-        targets = list(targets)[:limit]
+        target_list = list(targets)[:limit]
         broken = []
         working = []
 
@@ -49,7 +48,7 @@ class LinkInspector(BaseProvider):
                 code = status.status_code if status else 0
                 return {"url": target, "status": code, "status_text": "Broken"}
 
-        results = await asyncio.gather(*[check(t) for t in targets])
+        results = await asyncio.gather(*[check(t) for t in target_list])
         for r in results:
             if r["status"] >= 400 or r["status"] == 0:
                 broken.append(r)
@@ -57,7 +56,7 @@ class LinkInspector(BaseProvider):
                 working.append(r)
 
         return {
-            "total_scanned": len(targets),
+            "total_scanned": len(target_list),
             "broken_count": len(broken),
             "broken_links": broken,
             "working_count": len(working),

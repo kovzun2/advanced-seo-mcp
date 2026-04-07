@@ -27,7 +27,9 @@ async def test_broken_links(inspector: LinkInspector):
     <a href="https://example.com/broken">Broken Link</a>
     </body></html>
     """
-    respx.get("https://example.com/page").mock(return_value=httpx.Response(200, text=page_html))
+    respx.get("https://example.com/page").mock(
+        return_value=httpx.Response(200, text=page_html)
+    )
     respx.head("https://example.com/ok").mock(return_value=httpx.Response(200))
     respx.head("https://example.com/broken").mock(return_value=httpx.Response(404))
 

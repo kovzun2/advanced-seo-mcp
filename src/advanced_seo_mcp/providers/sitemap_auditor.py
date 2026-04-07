@@ -27,12 +27,19 @@ class SitemapAuditor(BaseProvider):
             return {"error": "No sitemap found or empty sitemap."}
 
         selected = sitemap_urls[:limit]
-        issues = {"missing_h1": [], "missing_meta_desc": [], "thin_content": []}
+        issues: dict[str, list[str]] = {
+            "missing_h1": [],
+            "missing_meta_desc": [],
+            "thin_content": [],
+        }
 
         for page_url in selected:
             data = await self._onpage.analyze(page_url)
             if isinstance(data, dict) and "error" in data:
                 continue
+            if isinstance(data, dict):
+                continue  # Skip dict errors
+            # data is OnPageResult here
             if data.h1_count == 0:
                 issues["missing_h1"].append(page_url)
             if not data.meta_description:

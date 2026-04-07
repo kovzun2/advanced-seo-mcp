@@ -33,7 +33,10 @@ async def test_onpage_analysis(analyzer: OnPageAnalyzer, fixtures_dir: Path):
     assert isinstance(result, OnPageResult)
     assert result.meta_title == "SEO Optimized Test Page"
     assert result.meta_title_length == 23
-    assert result.meta_description == "This is a test page with proper SEO meta tags for analysis"
+    assert (
+        result.meta_description
+        == "This is a test page with proper SEO meta tags for analysis"
+    )
     assert result.meta_description_length == 58
     assert result.h1_count == 1
     assert result.h1_tags == ["Main Heading"]
@@ -50,8 +53,6 @@ async def test_onpage_analysis(analyzer: OnPageAnalyzer, fixtures_dir: Path):
 @pytest.mark.anyio
 async def test_onpage_fetch_error(http_client: SafeHTTPClient):
     analyzer = OnPageAnalyzer(http_client)
-    respx.get("https://broken.com/page").mock(
-        return_value=httpx.Response(500)
-    )
+    respx.get("https://broken.com/page").mock(return_value=httpx.Response(500))
     result = await analyzer.analyze("https://broken.com/page")
     assert "error" in result

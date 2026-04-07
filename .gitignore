@@ -18,6 +18,13 @@ dist/
 # Reports (generated)
 reports/
 
+# Test/cache
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+.mypy_cache/
+
 # IDE
 .vscode/
 .idea/

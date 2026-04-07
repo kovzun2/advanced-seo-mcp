@@ -135,7 +135,7 @@ class SafeHTTPClient:
             except (httpx.HTTPError, OSError) as exc:
                 last_exc = exc
                 if attempt < self.max_retries - 1:
-                    await asyncio.sleep(0.5 * (2 ** attempt))
+                    await asyncio.sleep(0.5 * (2**attempt))
                     logger.warning("Retry %d for %s: %s", attempt + 1, url, exc)
 
         raise last_exc or RuntimeError("GET failed after retries")

@@ -12,18 +12,18 @@ from pydantic import Field
 # Load env vars before anything else
 load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 
-from .config import get_settings
-from .http_client import SafeHTTPClient, RateLimiter
-from .providers.onpage_analyzer import OnPageAnalyzer
-from .providers.technical_auditor import TechnicalAuditor
-from .providers.psi_analyzer import PSIAnalyzer
-from .providers.schema_validator import SchemaValidator
-from .providers.link_inspector import LinkInspector
-from .providers.content_analyzer import ContentAnalyzer
-from .providers.sitemap_auditor import SitemapAuditor
-from .providers.competitor_analyzer import CompetitorAnalyzer
-from .providers.ahrefs_api import AhrefsClient
-from .providers.reporter import ReportOrchestrator
+from .config import get_settings  # noqa: E402
+from .http_client import SafeHTTPClient, RateLimiter  # noqa: E402
+from .providers.onpage_analyzer import OnPageAnalyzer  # noqa: E402
+from .providers.technical_auditor import TechnicalAuditor  # noqa: E402
+from .providers.psi_analyzer import PSIAnalyzer  # noqa: E402
+from .providers.schema_validator import SchemaValidator  # noqa: E402
+from .providers.link_inspector import LinkInspector  # noqa: E402
+from .providers.content_analyzer import ContentAnalyzer  # noqa: E402
+from .providers.sitemap_auditor import SitemapAuditor  # noqa: E402
+from .providers.competitor_analyzer import CompetitorAnalyzer  # noqa: E402
+from .providers.ahrefs_api import AhrefsClient  # noqa: E402
+from .providers.reporter import ReportOrchestrator  # noqa: E402
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -99,7 +99,9 @@ def analyze_content_density(
 @mcp.tool()
 def compare_competitors(
     my_domain: Annotated[str, Field(description="Your domain", min_length=3)],
-    competitor_domain: Annotated[str, Field(description="Competitor domain", min_length=3)],
+    competitor_domain: Annotated[
+        str, Field(description="Competitor domain", min_length=3)
+    ],
 ) -> dict[str, Any]:
     """Compares SEO metrics of two domains."""
     client = _make_http_client()

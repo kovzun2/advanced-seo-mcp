@@ -1,99 +1,83 @@
-# 🚀 Advanced SEO MCP Server
+# Advanced SEO MCP
 
-<div align="center">
+Professional SEO analysis MCP server for AI agents. Provides on-page analysis, technical audits, Google PageSpeed Insights, and Ahrefs API integration.
 
-![Python Version](https://img.shields.io/badge/python-3.10%2B-blue?style=for-the-badge&logo=python)
-![License](https://img.shields.io/badge/license-MIT-green?style=for-the-badge)
-![Status](https://img.shields.io/badge/status-stable-purple?style=for-the-badge)
-![MCP](https://img.shields.io/badge/MCP-FastMCP-orange?style=for-the-badge)
-
-**Powering AI Agents with Advanced SEO Intelligence**
-
-</div>
-
-## 📖 Overview
-
-**Advanced SEO MCP** is a robust Model Context Protocol (MCP) server designed to equip AI agents with professional-grade SEO capabilities. It combines **On-Page analysis**, **Technical Audits**, **Google PageSpeed Insights**, and **Ahrefs Data** (via CapSolver) into a unified interface.
-
----
-
-## 🚀 Installation
-
-### Option 1: One-Command Install (Recommended)
-
-If you have [uv](https://github.com/astral-sh/uv) installed, you can install this extension directly with Gemini CLI. `uv` handles all Python dependencies automatically.
-
-```bash
-gemini extensions install https://github.com/halilertekin/advanced-seo-mcp
-```
-
-*Note: You will need to configure your API keys in the `.env` file inside the extension directory after installation.*
-
-### Option 2: Manual Developer Setup
-
-If you want to modify the code or don't use `uv`, follow these steps:
-
-1.  **Clone the repository:**
-    ```bash
-    git clone https://github.com/halilertekin/advanced-seo-mcp.git
-    cd advanced-seo-mcp
-    ```
-
-2.  **Create virtual environment & Install:**
-    ```bash
-    python3 -m venv .venv
-    source .venv/bin/activate  # Windows: .venv\Scripts\activate
-    pip install -e .
-    ```
-
-3.  **Setup Configuration:**
-    Run the setup script to generate the local configuration:
-    ```bash
-    python setup_extension.py
-    ```
-
-4.  **Link to Gemini:**
-    ```bash
-    ln -s $(pwd) ~/.gemini/extensions/advanced-seo-mcp
-    ```
-
----
-
-## 🔑 Configuration
-
-This server requires API keys for full functionality.
-
-1.  Create a `.env` file in the project root (or rename `.env.example`):
-    ```bash
-    cp .env.example .env
-    ```
-
-2.  Add your API keys:
-    ```ini
-    # Required for Ahrefs Tools (Backlinks, Keywords, Traffic)
-    # Get key: https://dashboard.capsolver.com/
-    CAPSOLVER_API_KEY="your_capsolver_key"
-
-    # Required for PageSpeed Insights
-    # Get key: https://developers.google.com/speed/docs/insights/v5/get-started
-    GOOGLE_PSI_API_KEY="your_google_psi_key"
-    ```
-
----
-
-## 📚 Tools Reference
+## Features
 
 | Tool | Description |
 |------|-------------|
-| `generate_audit_report` | **Best!** Generates a full Markdown SEO report combining all metrics. |
-| `onpage_audit` | Analyzes content structure, meta tags, and density. |
-| `analyze_page_speed` | Google PageSpeed Insights analysis (Mobile/Desktop). |
-| `check_schema_markup` | Validates JSON-LD Schema implementation. |
-| `check_broken_links_on_page` | Scans page for broken (404) internal/external links. |
-| `compare_competitors` | Compares Backlinks/Traffic/DR of 2 domains. |
-| `bulk_sitemap_audit` | Scans sitemap and performs quick audit on multiple pages. |
-| `get_backlinks` | Retrieves Domain Rating & Top Backlinks (Ahrefs Data). |
-| `keyword_ideas` | Generates keyword ideas & questions (Ahrefs Data). |
+| `onpage_audit` | Meta tags, headings, content, links, images |
+| `technical_health_check` | robots.txt, sitemap, HTTPS, security headers |
+| `analyze_page_speed` | Google PSI — Core Web Vitals |
+| `check_schema_markup` | JSON-LD validation |
+| `check_broken_links_on_page` | 404 link detection |
+| `analyze_content_density` | Keyword density analysis |
+| `bulk_sitemap_audit` | Multi-page audit via sitemap |
+| `get_backlinks` | Ahrefs backlink data |
+| `compare_competitors` | Domain comparison via Ahrefs |
+| `generate_audit_report` | Full Markdown report |
 
-## 📝 License
+## Installation
+
+### Manual
+```bash
+git clone https://github.com/kovzun2/advanced-seo-mcp.git
+cd advanced-seo-mcp
+python3 -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev]"
+```
+
+## Configuration
+
+```bash
+cp .env.example .env
+# Edit .env with your API keys
+```
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `GOOGLE_PSI_API_KEY` | For PSI tools | [Get here](https://developers.google.com/speed/docs/insights/v5/get-started) |
+| `AHREFS_API_TOKEN` | For Ahrefs tools | [Get here](https://ahrefs.com/api) |
+
+Tools gracefully degrade with a helpful message if API keys are missing.
+
+## Development
+
+```bash
+# Install dev deps
+pip install -e ".[dev]"
+
+# Run tests
+pytest -v
+
+# Lint
+ruff check src/ tests/
+ruff format src/ tests/
+
+# Type check
+mypy src/
+
+# Install pre-commit hooks
+pre-commit install
+```
+
+## Architecture
+
+```
+MCP Client (LLM)
+       │
+  server.py — 12 MCP tools
+       │
+  ReportOrchestrator (parallel execution)
+       │
+  ┌────┬────┬────┬────┬────┐
+OnPage Tech PSI  Link Sitemap
+       │
+  SafeHTTPClient (SSRF protection, retry, rate limit)
+       │
+  External APIs: Google PSI, Ahrefs v2
+```
+
+## License
+
 MIT

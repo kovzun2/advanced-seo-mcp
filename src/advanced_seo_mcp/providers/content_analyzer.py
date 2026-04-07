@@ -16,7 +16,9 @@ class ContentAnalyzer(BaseProvider):
     def __init__(self, http_client: SafeHTTPClient):
         super().__init__(http_client)
 
-    async def analyze(self, url: str, target_keyword: str | None = None, **kwargs: Any) -> dict[str, Any]:
+    async def analyze(
+        self, url: str, target_keyword: str | None = None, **kwargs: Any
+    ) -> dict[str, Any]:
         """Analyze keyword density on page."""
         url = self._normalize_url(url)
         try:

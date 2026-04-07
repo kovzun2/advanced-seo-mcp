@@ -6,6 +6,7 @@ import asyncio
 def test_server_imports():
     """Server module should import without errors."""
     from advanced_seo_mcp.server import mcp
+
     assert mcp is not None
 
 

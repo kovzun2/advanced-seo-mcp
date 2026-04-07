@@ -19,10 +19,12 @@ def sample_html(fixtures_dir: Path) -> str:
 @pytest.fixture
 def sample_psi_response(fixtures_dir: Path) -> dict:
     import json
+
     return json.loads((fixtures_dir / "psi_sample.json").read_text())
 
 
 @pytest.fixture
 def sample_ahrefs_response(fixtures_dir: Path) -> dict:
     import json
+
     return json.loads((fixtures_dir / "ahrefs_backlinks.json").read_text())

@@ -74,7 +74,9 @@ class TechnicalAuditor(BaseProvider):
             issues.append(Issue(message="X-Frame-Options missing", severity="info"))
             score -= 5
         if not xcto:
-            issues.append(Issue(message="X-Content-Type-Options missing", severity="info"))
+            issues.append(
+                Issue(message="X-Content-Type-Options missing", severity="info")
+            )
             score -= 5
 
         score = max(0, score)

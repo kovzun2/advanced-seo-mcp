@@ -7,7 +7,9 @@ from typing import Any
 
 from ..config import get_settings
 from ..http_client import SafeHTTPClient
+from ..models.onpage import OnPageResult
 from ..models.report import SEOReport
+from ..models.technical import TechnicalAudit
 from .onpage_analyzer import OnPageAnalyzer
 from .technical_auditor import TechnicalAuditor
 from .psi_analyzer import PSIAnalyzer
@@ -33,7 +35,9 @@ class ReportOrchestrator:
     async def run_full_audit(self, url: str, include_ahrefs: bool = True) -> SEOReport:
         """Run comprehensive audit and save Markdown report."""
         url_normalized = OnPageAnalyzer._normalize_url(url)
-        domain = url_normalized.replace("https://", "").replace("http://", "").strip("/")
+        domain = (
+            url_normalized.replace("https://", "").replace("http://", "").strip("/")
+        )
 
         # Run independent checks in parallel
         onpage, technical = await asyncio.gather(
@@ -43,19 +47,25 @@ class ReportOrchestrator:
         )
 
         # Handle errors gracefully
-        onpage_result = onpage if not isinstance(onpage, Exception) else {"error": str(onpage)}
-        tech_result = technical if not isinstance(technical, Exception) else {"error": str(technical)}
+        onpage_result = (
+            onpage if not isinstance(onpage, Exception) else {"error": str(onpage)}
+        )
+        tech_result = (
+            technical
+            if not isinstance(technical, Exception)
+            else {"error": str(technical)}
+        )
 
         # Score calculation
         score = 50
-        if isinstance(onpage_result, dict) and "error" not in onpage_result:
+        if isinstance(onpage_result, OnPageResult):
             if onpage_result.meta_title_optimal:
                 score += 5
             if onpage_result.meta_description_optimal:
                 score += 5
             if not onpage_result.thin_content:
                 score += 5
-        if isinstance(tech_result, dict) and "error" not in tech_result:
+        if isinstance(tech_result, TechnicalAudit):
             score += tech_result.score // 10
 
         score = min(100, max(0, score))
@@ -70,7 +80,7 @@ class ReportOrchestrator:
 
         # Save Markdown
         formatter = MarkdownFormatter()
-        file_path = formatter.save(report, onpage_result, tech_result)
+        _file_path = formatter.save(report, onpage_result, tech_result)
 
         return report
 
@@ -93,10 +103,14 @@ class MarkdownFormatter:
         parts.append(f"**URL:** {report.url}")
         parts.append(f"**Overall Score:** {report.overall_score}/100\n")
 
-        if isinstance(onpage, dict) and "error" not in onpage:
+        if isinstance(onpage, OnPageResult):
             parts.append("## On-Page SEO")
-            parts.append(f"- Title: `{onpage.meta_title}` ({onpage.meta_title_length} chars)")
-            parts.append(f"- Description: `{onpage.meta_description}` ({onpage.meta_description_length} chars)")
+            parts.append(
+                f"- Title: `{onpage.meta_title}` ({onpage.meta_title_length} chars)"
+            )
+            parts.append(
+                f"- Description: `{onpage.meta_description}` ({onpage.meta_description_length} chars)"
+            )
             parts.append(f"- H1 count: {onpage.h1_count}")
             parts.append(f"- Word count: {onpage.word_count}")
             parts.append(f"- Images missing alt: {onpage.images_missing_alt}")
@@ -105,7 +119,7 @@ class MarkdownFormatter:
                 for issue in onpage.issues:
                     parts.append(f"- [{issue.severity.upper()}] {issue.message}")
 
-        if isinstance(technical, dict) and "error" not in technical:
+        if isinstance(technical, TechnicalAudit):
             parts.append("\n## Technical Health")
             parts.append(f"- robots.txt: {'✅' if technical.has_robots_txt else '❌'}")
             parts.append(f"- Sitemap: {'✅' if technical.has_sitemap else '❌'}")

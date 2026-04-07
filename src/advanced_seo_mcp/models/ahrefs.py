@@ -7,6 +7,7 @@ from .common import SEOBaseModel
 
 class BacklinkEntry(SEOBaseModel):
     """Single backlink from Ahrefs."""
+
     anchor: str
     domain_rating: int = Field(ge=0, le=100)
     url_from: str
@@ -16,6 +17,7 @@ class BacklinkEntry(SEOBaseModel):
 
 class BacklinkData(SEOBaseModel):
     """Ahrefs backlink overview for a domain."""
+
     domain: str
     domain_rating: int = Field(ge=0, le=100)
     total_backlinks: int = Field(ge=0)

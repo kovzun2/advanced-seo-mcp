@@ -23,12 +23,19 @@ def auditor(http_client: SafeHTTPClient) -> TechnicalAuditor:
 @pytest.mark.anyio
 async def test_technical_audit_all_good(auditor: TechnicalAuditor):
     base = "https://example.com"
-    respx.head(f"{base}/").mock(return_value=httpx.Response(200, headers={
-        "Strict-Transport-Security": "max-age=31536000",
-        "X-Frame-Options": "DENY",
-        "X-Content-Type-Options": "nosniff",
-    }))
-    respx.get(f"{base}/robots.txt").mock(return_value=httpx.Response(200, text="User-agent: *\nAllow: /"))
+    respx.head(f"{base}/").mock(
+        return_value=httpx.Response(
+            200,
+            headers={
+                "Strict-Transport-Security": "max-age=31536000",
+                "X-Frame-Options": "DENY",
+                "X-Content-Type-Options": "nosniff",
+            },
+        )
+    )
+    respx.get(f"{base}/robots.txt").mock(
+        return_value=httpx.Response(200, text="User-agent: *\nAllow: /")
+    )
     respx.head(f"{base}/sitemap.xml").mock(return_value=httpx.Response(200))
 
     result = await auditor.analyze(base)
