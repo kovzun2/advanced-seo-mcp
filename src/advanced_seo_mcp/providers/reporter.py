@@ -1,141 +1,118 @@
-import os
+"""Report orchestrator and markdown formatter."""
+
+import asyncio
 from datetime import datetime
-from typing import Dict, Any
 from pathlib import Path
-from .onpage_analyzer import analyze_onpage
-from .technical_auditor import check_technical_health
-from .ahrefs_scraper import get_backlinks_data, get_traffic_data
-from .schema_validator import validate_schema
-from .link_inspector import check_broken_links
-from .content_analyzer import analyze_keywords
-from .psi_analyzer import analyze_speed
+from typing import Any
 
-def generate_markdown_report(url: str, include_ahrefs: bool = True) -> str:
-    """
-    Runs all analysis tools for a URL and saves a formatted Markdown report.
-    Returns the file path of the generated report.
-    """
-    domain = url.replace('https://', '').replace('http://', '').strip('/')
-    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    report_filename = f"seo_report_{domain.replace('.', '_')}_{timestamp}.md"
-    
-    # Ensure reports directory exists
-    report_dir = Path("reports")
-    report_dir.mkdir(exist_ok=True)
-    file_path = report_dir / report_filename
+from ..config import get_settings
+from ..http_client import SafeHTTPClient
+from ..models.report import SEOReport
+from .onpage_analyzer import OnPageAnalyzer
+from .technical_auditor import TechnicalAuditor
+from .psi_analyzer import PSIAnalyzer
+from .schema_validator import SchemaValidator
+from .link_inspector import LinkInspector
+from .content_analyzer import ContentAnalyzer
+from .ahrefs_api import AhrefsClient
 
-    # 1. Run Analyses
-    print(f"🔍 Analyzing On-Page SEO for {url}...")
-    onpage = analyze_onpage(url)
-    
-    print(f"🛠️ Checking Technical Health...")
-    tech = check_technical_health(url)
-    
-    print(f"🧩 Validating Schema Markup...")
-    schema = validate_schema(url)
-    
-    print(f"🔗 Inspecting Links (Broken Checker)...")
-    links = check_broken_links(url, limit=20)
-    
-    print(f"📝 Analyzing Content & Keywords...")
-    content_analysis = analyze_keywords(url)
-    
-    print(f"🚀 Measuring Page Speed (PSI)...")
-    speed = analyze_speed(url, strategy='mobile')
-    
-    ahrefs = None
-    traffic = None
-    if include_ahrefs:
-        try:
-            print(f"🔗 Fetching Backlinks via CapSolver...")
-            ahrefs = get_backlinks_data(domain)
-            print(f"📈 Estimating Traffic...")
-            traffic = get_traffic_data(domain)
-        except Exception as e:
-            print(f"⚠️ Ahrefs data skipped: {e}")
 
-    # 2. Build Markdown Content
-    md_parts = []
-    md_parts.append(f"# SEO Audit Report: {domain}")
-    md_parts.append(f"**Date:** {datetime.now().strftime('%Y-%m-%d %H:%M')}")
-    md_parts.append(f"**URL:** {url}\n")
+class ReportOrchestrator:
+    """Runs all providers and assembles an SEOReport."""
 
-    # Executive Summary
-    md_parts.append("## 📋 Executive Summary")
-    md_parts.append(f"- **HTTP Status:** {onpage.get('status_code')}")
-    
-    load_time = onpage.get('load_time_ms', 0)
-    md_parts.append(f"- **Load Time:** {load_time}ms")
-    
-    if "error" not in speed:
-        md_parts.append(f"- **Mobile Performance:** {speed.get('performance_score')}/100")
-        lcp = speed.get('core_web_vitals', {}).get('lcp', 'N/A')
-        cls = speed.get('core_web_vitals', {}).get('cls', 'N/A')
-        md_parts.append(f"- **Core Web Vitals:** LCP: {lcp}, CLS: {cls}")
-    
-    if ahrefs and ahrefs.get('overview'):
-        md_parts.append(f"- **Domain Rating (DR):** {ahrefs['overview'].get('domainRating', 'N/A')}")
-    if traffic and traffic.get('traffic'):
-        md_parts.append(f"- **Est. Monthly Traffic:** {traffic['traffic'].get('monthly', 0)}")
+    def __init__(self, http_client: SafeHTTPClient):
+        self.http = http_client
+        self.onpage = OnPageAnalyzer(http_client)
+        self.technical = TechnicalAuditor(http_client)
+        self.psi = PSIAnalyzer(http_client)
+        self.schema = SchemaValidator(http_client)
+        self.links = LinkInspector(http_client)
+        self.content = ContentAnalyzer(http_client)
+        self.ahrefs = AhrefsClient(api_token=get_settings().ahrefs_api_token or "")
 
-    # On-Page
-    md_parts.append("\n## 🔍 On-Page SEO Analysis")
-    meta = onpage.get('meta', {})
-    md_parts.append("### Meta Tags")
-    md_parts.append(f"- **Title:** `{meta.get('title', {}).get('content', 'MISSING')}`")
-    md_parts.append(f"- **Description:** `{meta.get('description', {}).get('content', 'MISSING')}`")
-    
-    # Content & Keywords
-    md_parts.append("\n### 📝 Content & Keywords")
-    md_parts.append(f"- **Total Words:** {content_analysis.get('total_words', 0)}\n")
-    
-    md_parts.append("| Keyword | Count | Density |")
-    md_parts.append("|---|---|---|")
-    for kw in content_analysis.get('top_keywords', []):
-        md_parts.append(f"| {kw['word']} | {kw['count']} | {kw['density']} |")
+    async def run_full_audit(self, url: str, include_ahrefs: bool = True) -> SEOReport:
+        """Run comprehensive audit and save Markdown report."""
+        url_normalized = OnPageAnalyzer._normalize_url(url)
+        domain = url_normalized.replace("https://", "").replace("http://", "").strip("/")
 
-    # Schema
-    md_parts.append("\n## 🧩 Schema Markup")
-    if schema.get('has_valid_schema'):
-        md_parts.append("✅ **Valid Schema Found**")
-        for s in schema.get('schemas', []):
-            if s['valid']:
-                md_parts.append(f"- Type: `{s.get('type')}`")
-    else:
-        md_parts.append("❌ **No Valid Schema Found**")
+        # Run independent checks in parallel
+        onpage, technical = await asyncio.gather(
+            self.onpage.analyze(url_normalized),
+            self.technical.analyze(url_normalized),
+            return_exceptions=True,
+        )
 
-    # Broken Links
-    md_parts.append("\n## 🔗 Link Health (Sample 20)")
-    md_parts.append(f"- **Scanned:** {links.get('total_scanned')}")
-    md_parts.append(f"- **Broken:** {links.get('broken_count')}")
-    if links.get('broken_links'):
-        md_parts.append("\n**Broken Links Found:**")
-        for l in links['broken_links']:
-            md_parts.append(f"- `[{l['status']}]` {l['url']}")
-    else:
-        md_parts.append("✅ No broken links found in sample.")
+        # Handle errors gracefully
+        onpage_result = onpage if not isinstance(onpage, Exception) else {"error": str(onpage)}
+        tech_result = technical if not isinstance(technical, Exception) else {"error": str(technical)}
 
-    # Technical
-    md_parts.append("\n## 🛠️ Technical Health")
-    exists_robots = '✅ Found' if tech['robots_txt'].get('exists') else '❌ Missing'
-    md_parts.append(f"- **Robots.txt:** {exists_robots}")
-    
-    exists_sitemap = '✅ Found' if tech['sitemap'].get('found') else '❌ Not found'
-    md_parts.append(f"- **Sitemap:** {exists_sitemap}")
+        # Score calculation
+        score = 50
+        if isinstance(onpage_result, dict) and "error" not in onpage_result:
+            if onpage_result.meta_title_optimal:
+                score += 5
+            if onpage_result.meta_description_optimal:
+                score += 5
+            if not onpage_result.thin_content:
+                score += 5
+        if isinstance(tech_result, dict) and "error" not in tech_result:
+            score += tech_result.score // 10
 
-    # Backlinks Detail
-    if ahrefs and ahrefs.get('backlinks'):
-        md_parts.append("\n## 🔗 Top Backlinks (Ahrefs)")
-        md_parts.append("| DR | Anchor | Source URL |")
-        md_parts.append("|----|--------|------------|")
-        for link in ahrefs['backlinks'][:10]:
-            anchor = link.get('anchor', '')[:30]
-            if anchor: anchor += "..."
-            md_parts.append(f"| {link.get('domainRating')} | {anchor} | {link.get('urlFrom')} |")
+        score = min(100, max(0, score))
 
-    # Save File
-    final_content = "\n".join(md_parts)
-    with open(file_path, "w", encoding="utf-8") as f:
-        f.write(final_content)
-    
-    return str(file_path.absolute())
+        report = SEOReport(
+            generated_at=datetime.now(),
+            url=url_normalized,
+            domain=domain,
+            overall_score=score,
+            summary=f"SEO audit for {domain}. Score: {score}/100.",
+        )
+
+        # Save Markdown
+        formatter = MarkdownFormatter()
+        file_path = formatter.save(report, onpage_result, tech_result)
+
+        return report
+
+
+class MarkdownFormatter:
+    """Formats SEOReport as Markdown and saves to file."""
+
+    def save(self, report: SEOReport, onpage: Any, technical: Any) -> Path:
+        """Generate and save Markdown report. Returns file path."""
+        settings = get_settings()
+        settings.reports_dir.mkdir(parents=True, exist_ok=True)
+
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        filename = f"seo_report_{report.domain.replace('.', '_')}_{timestamp}.md"
+        file_path = settings.reports_dir / filename
+
+        parts = []
+        parts.append(f"# SEO Audit Report: {report.domain}")
+        parts.append(f"**Date:** {report.generated_at.strftime('%Y-%m-%d %H:%M')}")
+        parts.append(f"**URL:** {report.url}")
+        parts.append(f"**Overall Score:** {report.overall_score}/100\n")
+
+        if isinstance(onpage, dict) and "error" not in onpage:
+            parts.append("## On-Page SEO")
+            parts.append(f"- Title: `{onpage.meta_title}` ({onpage.meta_title_length} chars)")
+            parts.append(f"- Description: `{onpage.meta_description}` ({onpage.meta_description_length} chars)")
+            parts.append(f"- H1 count: {onpage.h1_count}")
+            parts.append(f"- Word count: {onpage.word_count}")
+            parts.append(f"- Images missing alt: {onpage.images_missing_alt}")
+            if onpage.issues:
+                parts.append("\n### Issues")
+                for issue in onpage.issues:
+                    parts.append(f"- [{issue.severity.upper()}] {issue.message}")
+
+        if isinstance(technical, dict) and "error" not in technical:
+            parts.append("\n## Technical Health")
+            parts.append(f"- robots.txt: {'✅' if technical.has_robots_txt else '❌'}")
+            parts.append(f"- Sitemap: {'✅' if technical.has_sitemap else '❌'}")
+            parts.append(f"- HTTPS: {'✅' if technical.https_enabled else '❌'}")
+            parts.append(f"- HSTS: {'✅' if technical.hsts_enabled else '❌'}")
+            parts.append(f"- Score: {technical.score}/100")
+
+        content = "\n".join(parts)
+        file_path.write_text(content, encoding="utf-8")
+        return file_path
