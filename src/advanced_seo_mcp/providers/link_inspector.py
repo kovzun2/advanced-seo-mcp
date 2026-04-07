@@ -1,65 +1,64 @@
-import requests
-from bs4 import BeautifulSoup
-from urllib.parse import urlparse, urljoin
-from fake_useragent import UserAgent
-from concurrent.futures import ThreadPoolExecutor
-from typing import Dict, Any, List
+"""Link inspector — finds broken links on a page."""
 
-def check_broken_links(url: str, limit: int = 20) -> Dict[str, Any]:
-    """
-    Scans a page for broken internal/external links.
-    """
-    if not url.startswith('http'):
-        url = 'https://' + url
-    
-    domain = urlparse(url).netloc
-    ua = UserAgent()
-    headers = {'User-Agent': ua.random}
-    
-    try:
-        resp = requests.get(url, headers=headers, timeout=10)
-        soup = BeautifulSoup(resp.content, 'lxml')
-        links = soup.find_all('a', href=True)
-        
-        targets = []
+import asyncio
+from typing import Any
+from urllib.parse import urljoin, urlparse
+
+from bs4 import BeautifulSoup
+
+from ..http_client import SafeHTTPClient
+from .base import BaseProvider
+
+
+class LinkInspector(BaseProvider):
+    """Scans a page for broken links (4xx/5xx)."""
+
+    def __init__(self, http_client: SafeHTTPClient):
+        super().__init__(http_client)
+
+    async def analyze(self, url: str, limit: int = 20, **kwargs: Any) -> dict[str, Any]:
+        """Scan page for broken links."""
+        url = self._normalize_url(url)
+        try:
+            resp = await self.http.get(url)
+        except Exception as exc:
+            return {"error": str(exc)}
+
+        soup = BeautifulSoup(resp.content, "lxml")
+        domain = urlparse(str(resp.url)).netloc
+        links = soup.find_all("a", href=True)
+
+        targets = set()
         for link in links:
-            href = link['href']
-            full_url = urljoin(url, href)
-            # Skip mailto, tel, javascript
-            if full_url.startswith(('http', 'https')):
-                targets.append(full_url)
-        
-        # Unique links, limited
-        unique_targets = list(set(targets))[:limit]
-        
+            href = link["href"]
+            full = urljoin(str(resp.url), href)
+            parsed = urlparse(full)
+            if parsed.scheme in ("http", "https"):
+                targets.add(full)
+
+        targets = list(targets)[:limit]
         broken = []
         working = []
-        
-        def check_link(target):
-            try:
-                # Use HEAD request for speed
-                r = requests.head(target, headers=headers, timeout=5, allow_redirects=True)
-                if r.status_code >= 400:
-                    return {"url": target, "status": r.status_code, "status_text": "Broken"}
-                return {"url": target, "status": r.status_code, "status_text": "OK"}
-            except Exception as e:
-                return {"url": target, "status": 0, "status_text": str(e)}
 
-        with ThreadPoolExecutor(max_workers=5) as executor:
-            results = list(executor.map(check_link, unique_targets))
-            
-        for res in results:
-            if res['status'] >= 400 or res['status'] == 0:
-                broken.append(res)
+        async def check(target: str) -> dict[str, Any]:
+            try:
+                resp = await self.http.get_with_fallback(target)
+                return {"url": target, "status": resp.status_code, "status_text": "OK"}
+            except Exception as exc:
+                status = getattr(exc, "response", None)
+                code = status.status_code if status else 0
+                return {"url": target, "status": code, "status_text": "Broken"}
+
+        results = await asyncio.gather(*[check(t) for t in targets])
+        for r in results:
+            if r["status"] >= 400 or r["status"] == 0:
+                broken.append(r)
             else:
-                working.append(res)
-                
+                working.append(r)
+
         return {
-            "total_scanned": len(unique_targets),
+            "total_scanned": len(targets),
             "broken_count": len(broken),
             "broken_links": broken,
-            "working_count": len(working)
+            "working_count": len(working),
         }
-        
-    except Exception as e:
-        return {"error": str(e)}

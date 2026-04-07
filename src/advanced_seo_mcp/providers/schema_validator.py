@@ -1,46 +1,51 @@
-import json
-from bs4 import BeautifulSoup
-import requests
-from fake_useragent import UserAgent
-from typing import Dict, Any, List
+"""Schema markup validator provider."""
 
-def validate_schema(url: str) -> Dict[str, Any]:
-    """
-    Extracts and validates JSON-LD Schema Markup from a URL.
-    """
-    if not url.startswith('http'):
-        url = 'https://' + url
-        
-    try:
-        ua = UserAgent()
-        resp = requests.get(url, headers={'User-Agent': ua.random}, timeout=10)
-        soup = BeautifulSoup(resp.content, 'lxml')
-        
-        schemas = soup.find_all('script', type='application/ld+json')
+import json
+from typing import Any
+
+from bs4 import BeautifulSoup
+
+from ..http_client import SafeHTTPClient
+from .base import BaseProvider
+
+
+class SchemaValidator(BaseProvider):
+    """Extracts and validates JSON-LD Schema Markup from a URL."""
+
+    def __init__(self, http_client: SafeHTTPClient):
+        super().__init__(http_client)
+
+    async def analyze(self, url: str, **kwargs: Any) -> dict[str, Any]:
+        """Check for JSON-LD schema markup."""
+        url = self._normalize_url(url)
+        try:
+            resp = await self.http.get(url)
+        except Exception as exc:
+            return {"error": str(exc)}
+
+        soup = BeautifulSoup(resp.content, "lxml")
+        scripts = soup.find_all("script", type="application/ld+json")
         results = []
-        
-        for script in schemas:
+
+        for script in scripts:
+            content = script.string or script.text or ""
             try:
-                # Remove comments or CDATA if present
-                content = script.string if script.string else script.text
                 data = json.loads(content)
                 results.append({
                     "valid": True,
-                    "type": data.get('@type', 'Unknown'),
-                    "context": data.get('@context', 'Unknown'),
-                    "raw": data
+                    "type": data.get("@type", "Unknown"),
+                    "context": data.get("@context", "Unknown"),
+                    "raw": data,
                 })
-            except json.JSONDecodeError as e:
+            except json.JSONDecodeError as exc:
                 results.append({
                     "valid": False,
-                    "error": f"JSON Decode Error: {str(e)}",
-                    "content_snippet": content[:50] + "..." if content else "Empty"
+                    "error": f"JSON Decode Error: {exc}",
+                    "content_snippet": content[:50] + "..." if content else "Empty",
                 })
-                
+
         return {
-            "found_count": len(schemas),
+            "found_count": len(scripts),
             "schemas": results,
-            "has_valid_schema": any(s['valid'] for s in results)
+            "has_valid_schema": any(s["valid"] for s in results),
         }
-    except Exception as e:
-        return {"error": str(e)}
