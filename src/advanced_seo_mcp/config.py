@@ -57,3 +57,9 @@ def get_settings() -> Settings:
     if _settings is None:
         _settings = Settings()
     return _settings
+
+
+def reset_settings() -> None:
+    """Reset cached settings. Useful for tests that modify environment."""
+    global _settings
+    _settings = None
