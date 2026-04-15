@@ -8,6 +8,7 @@ from bs4 import BeautifulSoup
 from ..http_client import SafeHTTPClient
 from ..models.common import Issue
 from ..models.onpage import OnPageResult
+from ..responses import make_error_response
 from .base import BaseProvider
 
 
@@ -25,7 +26,12 @@ class OnPageAnalyzer(BaseProvider):
         try:
             resp = await self.http.get(url)
         except Exception as exc:
-            return {"error": f"Failed to fetch URL: {exc}"}
+            return make_error_response(
+                code="fetch_failed",
+                message=f"Failed to fetch URL: {exc}",
+                provider="onpage",
+                retryable=True,
+            )
 
         soup = BeautifulSoup(resp.content, "lxml")
         domain = urlparse(str(resp.url)).netloc

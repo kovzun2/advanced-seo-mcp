@@ -57,3 +57,4 @@ def test_markdown_formatter_creates_report(tmp_path):
     content = path.read_text()
     assert "# SEO Audit Report: example.com" in content
     assert "**Overall Score:** 70/100" in content
+    assert "## Run Status" in content

@@ -6,6 +6,7 @@ from typing import Any
 import httpx
 
 from ..models.ahrefs import BacklinkData, BacklinkEntry
+from ..responses import make_error_response
 
 logger = logging.getLogger(__name__)
 
@@ -23,9 +24,12 @@ class AhrefsClient:
     ) -> BacklinkData | dict[str, str]:
         """Get backlink overview and top backlinks for a domain."""
         if not self.api_token:
-            return {
-                "error": "AHREFS_API_TOKEN not configured — sign up at https://ahrefs.com/api"
-            }
+            return make_error_response(
+                code="missing_api_key",
+                message="AHREFS_API_TOKEN not configured — sign up at https://ahrefs.com/api",
+                provider="ahrefs",
+                details={"env_var": "AHREFS_API_TOKEN"},
+            )
 
         params = {
             "from": "backlinks",
@@ -43,7 +47,12 @@ class AhrefsClient:
                 resp.raise_for_status()
                 data = resp.json()
         except Exception as exc:
-            return {"error": f"Ahrefs API error: {exc}"}
+            return make_error_response(
+                code="provider_request_failed",
+                message=f"Ahrefs API error: {exc}",
+                provider="ahrefs",
+                retryable=True,
+            )
 
         backlinks = []
         overview = {}
@@ -72,16 +81,36 @@ class AhrefsClient:
     ) -> dict[str, Any]:
         """Get estimated organic traffic data."""
         if not self.api_token:
-            return {"error": "AHREFS_API_TOKEN not configured"}
-        return {"error": "Traffic endpoint not available in free tier"}
+            return make_error_response(
+                code="missing_api_key",
+                message="AHREFS_API_TOKEN not configured",
+                provider="ahrefs",
+                details={"env_var": "AHREFS_API_TOKEN"},
+            )
+        return make_error_response(
+            code="unsupported_capability",
+            message="Traffic endpoint is not implemented for the current Ahrefs integration.",
+            provider="ahrefs",
+            details={"status": "beta"},
+        )
 
     async def get_keyword_difficulty(
         self, keyword: str, country: str = "us"
     ) -> dict[str, Any]:
         """Get keyword difficulty score."""
         if not self.api_token:
-            return {"error": "AHREFS_API_TOKEN not configured"}
-        return {"error": "Keyword difficulty endpoint not available in free tier"}
+            return make_error_response(
+                code="missing_api_key",
+                message="AHREFS_API_TOKEN not configured",
+                provider="ahrefs",
+                details={"env_var": "AHREFS_API_TOKEN"},
+            )
+        return make_error_response(
+            code="unsupported_capability",
+            message="Keyword difficulty is not implemented for the current Ahrefs integration.",
+            provider="ahrefs",
+            details={"status": "beta"},
+        )
 
     async def compare_domains(self, domain1: str, domain2: str) -> dict[str, Any]:
         """Compare two domains."""

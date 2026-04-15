@@ -56,3 +56,4 @@ async def test_onpage_fetch_error(http_client: SafeHTTPClient):
     respx.get("https://broken.com/page").mock(return_value=httpx.Response(500))
     result = await analyzer.analyze("https://broken.com/page")
     assert "error" in result
+    assert result["error"]["code"] == "fetch_failed"

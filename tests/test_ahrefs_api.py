@@ -36,3 +36,4 @@ async def test_get_backlinks_no_token():
     client = AhrefsClient(api_token="")
     result = await client.get_backlinks("example.com")
     assert "error" in result
+    assert result["error"]["code"] == "missing_api_key"

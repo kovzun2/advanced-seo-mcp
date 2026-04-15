@@ -23,7 +23,7 @@ def auditor(http_client: SafeHTTPClient) -> TechnicalAuditor:
 @pytest.mark.anyio
 async def test_technical_audit_all_good(auditor: TechnicalAuditor):
     base = "https://example.com"
-    respx.head(f"{base}/").mock(
+    respx.get(f"{base}/").mock(
         return_value=httpx.Response(
             200,
             headers={
@@ -31,12 +31,14 @@ async def test_technical_audit_all_good(auditor: TechnicalAuditor):
                 "X-Frame-Options": "DENY",
                 "X-Content-Type-Options": "nosniff",
             },
+            text="<html><head><link rel='canonical' href='https://example.com/'></head></html>",
         )
     )
     respx.get(f"{base}/robots.txt").mock(
         return_value=httpx.Response(200, text="User-agent: *\nAllow: /")
     )
-    respx.head(f"{base}/sitemap.xml").mock(return_value=httpx.Response(200))
+    respx.head(f"{base}/sitemap.xml").mock(return_value=httpx.Response(405))
+    respx.get(f"{base}/sitemap.xml").mock(return_value=httpx.Response(200, text="<xml />"))
 
     result = await auditor.analyze(base)
     assert isinstance(result, TechnicalAudit)
@@ -45,6 +47,8 @@ async def test_technical_audit_all_good(auditor: TechnicalAuditor):
     assert result.has_sitemap is True
     assert result.https_enabled is True
     assert result.hsts_enabled is True
+    assert result.redirects_to_https is True
+    assert result.indexable is True
     assert 0 <= result.score <= 100
 
 
@@ -53,7 +57,13 @@ async def test_technical_audit_all_good(auditor: TechnicalAuditor):
 async def test_technical_audit_missing_files(http_client: SafeHTTPClient):
     auditor = TechnicalAuditor(http_client)
     base = "https://example.com"
-    respx.head(f"{base}/").mock(return_value=httpx.Response(200, headers={}))
+    respx.get(f"{base}/").mock(
+        return_value=httpx.Response(
+            200,
+            headers={},
+            text="<html><head><meta name='robots' content='noindex'></head></html>",
+        )
+    )
     respx.get(f"{base}/robots.txt").mock(return_value=httpx.Response(404))
     respx.head(f"{base}/sitemap.xml").mock(return_value=httpx.Response(404))
     respx.head(f"{base}/sitemap_index.xml").mock(return_value=httpx.Response(404))
@@ -63,4 +73,5 @@ async def test_technical_audit_missing_files(http_client: SafeHTTPClient):
     assert result.has_robots_txt is False
     assert result.has_sitemap is False
     assert result.hsts_enabled is False
+    assert result.indexable is False
     assert result.score < 80

@@ -3,15 +3,23 @@
 ## Setup
 
 ```bash
-python3 -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"
+make setup
+```
+
+Manual alternative:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -e ".[dev]"
 pre-commit install
 ```
 
 ## Running tests
 
 ```bash
-pytest -v
+make test
 ```
 
 ## Code style
@@ -19,9 +27,16 @@ pytest -v
 We use `ruff` for linting and formatting, `mypy` for type checking.
 
 ```bash
-ruff format src/ tests/
-ruff check --fix src/ tests/
-mypy src/
+make format
+make lint
+make typecheck
+```
+
+## Packaging smoke checks
+
+```bash
+make build
+make smoke
 ```
 
 ## Adding a new provider
@@ -31,3 +46,4 @@ mypy src/
 3. Write tests in `tests/`
 4. Register tool in `server.py`
 5. Update README feature table
+6. Ensure the tool returns normalized `_meta` and structured `error` payloads

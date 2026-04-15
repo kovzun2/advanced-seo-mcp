@@ -3,6 +3,7 @@
 from typing import Any
 
 from ..http_client import SafeHTTPClient
+from ..responses import make_error_response
 from .base import BaseProvider
 from .ahrefs_api import AhrefsClient
 
@@ -27,7 +28,11 @@ class CompetitorAnalyzer(BaseProvider):
         domain2 = competitor.replace("https://", "").replace("http://", "").strip("/")
 
         if not domain2:
-            return {"error": "Competitor domain required"}
+            return make_error_response(
+                code="competitor_required",
+                message="Competitor domain required",
+                provider="ahrefs",
+            )
 
         d1 = await self.ahrefs.get_backlinks(domain1)
         d2 = await self.ahrefs.get_backlinks(domain2)

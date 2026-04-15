@@ -29,3 +29,19 @@ async def test_keyword_density(analyzer: ContentAnalyzer):
     assert result["target_analysis"] is not None
     assert result["target_analysis"]["keyword"] == "python"
     assert result["target_analysis"]["count"] == 3
+    assert result["unique_words"] >= 3
+
+
+@respx.mock
+@pytest.mark.anyio
+async def test_keyword_density_phrase_matching(analyzer: ContentAnalyzer):
+    html = "<html><body><p>technical seo audit technical seo checklist technical seo</p></body></html>"
+    respx.get("https://example.com/phrase").mock(
+        return_value=httpx.Response(200, text=html)
+    )
+    result = await analyzer.analyze(
+        "https://example.com/phrase", target_keyword="technical seo"
+    )
+    assert result["target_analysis"]["count"] == 3
+    assert result["target_analysis"]["match_type"] == "phrase"
+    assert result["top_bigrams"]

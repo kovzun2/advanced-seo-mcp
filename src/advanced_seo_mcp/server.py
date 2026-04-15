@@ -24,6 +24,7 @@ from .providers.sitemap_auditor import SitemapAuditor  # noqa: E402
 from .providers.competitor_analyzer import CompetitorAnalyzer  # noqa: E402
 from .providers.ahrefs_api import AhrefsClient  # noqa: E402
 from .providers.reporter import ReportOrchestrator  # noqa: E402
+from .responses import normalize_tool_output  # noqa: E402
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -49,7 +50,8 @@ def generate_audit_report(
     client = _make_http_client()
     orchestrator = ReportOrchestrator(client)
     report = asyncio.run(orchestrator.run_full_audit(url, include_ahrefs))
-    return f"Report saved: {report.domain} — check reports/ directory"
+    suffix = "partial" if report.partial else "complete"
+    return f"Report saved: {report.report_path} ({suffix})"
 
 
 @mcp.tool()
@@ -61,7 +63,13 @@ def analyze_page_speed(
     client = _make_http_client()
     psi = PSIAnalyzer(client)
     result = asyncio.run(psi.analyze(url, strategy))
-    return result if isinstance(result, dict) else result.model_dump()
+    return normalize_tool_output(
+        result,
+        tool_name="analyze_page_speed",
+        provider="psi",
+        capability="stable",
+        requires_api_key=True,
+    )
 
 
 @mcp.tool()
@@ -71,7 +79,12 @@ def check_schema_markup(
     """Validates JSON-LD Schema Markup on a page."""
     client = _make_http_client()
     validator = SchemaValidator(client)
-    return asyncio.run(validator.analyze(url))
+    result = asyncio.run(validator.analyze(url))
+    return normalize_tool_output(
+        result,
+        tool_name="check_schema_markup",
+        provider="schema",
+    )
 
 
 @mcp.tool()
@@ -82,7 +95,12 @@ def check_broken_links_on_page(
     """Scans a page for broken links (404s)."""
     client = _make_http_client()
     inspector = LinkInspector(client)
-    return asyncio.run(inspector.analyze(url, limit=limit))
+    result = asyncio.run(inspector.analyze(url, limit=limit))
+    return normalize_tool_output(
+        result,
+        tool_name="check_broken_links_on_page",
+        provider="links",
+    )
 
 
 @mcp.tool()
@@ -93,7 +111,12 @@ def analyze_content_density(
     """Analyzes keyword density and TF-IDF metrics."""
     client = _make_http_client()
     analyzer = ContentAnalyzer(client)
-    return asyncio.run(analyzer.analyze(url, target_keyword=target_keyword))
+    result = asyncio.run(analyzer.analyze(url, target_keyword=target_keyword))
+    return normalize_tool_output(
+        result,
+        tool_name="analyze_content_density",
+        provider="content",
+    )
 
 
 @mcp.tool()
@@ -107,7 +130,14 @@ def compare_competitors(
     client = _make_http_client()
     ahrefs = AhrefsClient(api_token=get_settings().ahrefs_api_token or "")
     competitor = CompetitorAnalyzer(client, ahrefs)
-    return asyncio.run(competitor.analyze(my_domain, competitor=competitor_domain))
+    result = asyncio.run(competitor.analyze(my_domain, competitor=competitor_domain))
+    return normalize_tool_output(
+        result,
+        tool_name="compare_competitors",
+        provider="ahrefs",
+        capability="stable",
+        requires_api_key=True,
+    )
 
 
 @mcp.tool()
@@ -118,7 +148,12 @@ def bulk_sitemap_audit(
     """Scans the sitemap and runs On-Page audit on multiple pages."""
     client = _make_http_client()
     auditor = SitemapAuditor(client)
-    return asyncio.run(auditor.analyze(url, limit=limit))
+    result = asyncio.run(auditor.analyze(url, limit=limit))
+    return normalize_tool_output(
+        result,
+        tool_name="bulk_sitemap_audit",
+        provider="sitemap",
+    )
 
 
 @mcp.tool()
@@ -129,7 +164,11 @@ def onpage_audit(
     client = _make_http_client()
     analyzer = OnPageAnalyzer(client)
     result = asyncio.run(analyzer.analyze(url))
-    return result if isinstance(result, dict) else result.model_dump()
+    return normalize_tool_output(
+        result,
+        tool_name="onpage_audit",
+        provider="onpage",
+    )
 
 
 @mcp.tool()
@@ -140,7 +179,11 @@ def technical_health_check(
     client = _make_http_client()
     auditor = TechnicalAuditor(client)
     result = asyncio.run(auditor.analyze(url))
-    return result if isinstance(result, dict) else result.model_dump()
+    return normalize_tool_output(
+        result,
+        tool_name="technical_health_check",
+        provider="technical",
+    )
 
 
 @mcp.tool()
@@ -150,7 +193,13 @@ def get_backlinks(
     """Retrieves backlink data via Ahrefs API."""
     ahrefs = AhrefsClient(api_token=get_settings().ahrefs_api_token or "")
     result = asyncio.run(ahrefs.get_backlinks(domain))
-    return result if isinstance(result, dict) else result.model_dump()
+    return normalize_tool_output(
+        result,
+        tool_name="get_backlinks",
+        provider="ahrefs",
+        capability="stable",
+        requires_api_key=True,
+    )
 
 
 @mcp.tool()
@@ -160,7 +209,14 @@ def estimate_traffic(
 ) -> dict[str, Any]:
     """Estimates monthly search traffic for a domain."""
     ahrefs = AhrefsClient(api_token=get_settings().ahrefs_api_token or "")
-    return asyncio.run(ahrefs.get_traffic(domain, country))
+    result = asyncio.run(ahrefs.get_traffic(domain, country))
+    return normalize_tool_output(
+        result,
+        tool_name="estimate_traffic",
+        provider="ahrefs",
+        capability="beta",
+        requires_api_key=True,
+    )
 
 
 @mcp.tool()
@@ -170,7 +226,14 @@ def check_difficulty(
 ) -> dict[str, Any]:
     """Checks keyword difficulty score."""
     ahrefs = AhrefsClient(api_token=get_settings().ahrefs_api_token or "")
-    return asyncio.run(ahrefs.get_keyword_difficulty(keyword, country))
+    result = asyncio.run(ahrefs.get_keyword_difficulty(keyword, country))
+    return normalize_tool_output(
+        result,
+        tool_name="check_difficulty",
+        provider="ahrefs",
+        capability="beta",
+        requires_api_key=True,
+    )
 
 
 def main():

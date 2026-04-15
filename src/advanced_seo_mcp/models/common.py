@@ -1,5 +1,7 @@
 """Common Pydantic models shared across providers."""
 
+from typing import Any
+
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -14,3 +16,13 @@ class Issue(SEOBaseModel):
 
     message: str
     severity: str = Field(pattern="^(critical|warning|info)$")
+
+
+class ErrorDetails(SEOBaseModel):
+    """Normalized error payload returned by tools."""
+
+    code: str
+    message: str
+    retryable: bool = False
+    provider: str
+    details: dict[str, Any] = Field(default_factory=dict)

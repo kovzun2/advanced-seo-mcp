@@ -6,6 +6,7 @@ from typing import Any
 from bs4 import BeautifulSoup
 
 from ..http_client import SafeHTTPClient
+from ..responses import make_error_response
 from .base import BaseProvider
 
 
@@ -21,7 +22,12 @@ class SchemaValidator(BaseProvider):
         try:
             resp = await self.http.get(url)
         except Exception as exc:
-            return {"error": str(exc)}
+            return make_error_response(
+                code="fetch_failed",
+                message=str(exc),
+                provider="schema",
+                retryable=True,
+            )
 
         soup = BeautifulSoup(resp.content, "lxml")
         scripts = soup.find_all("script", type="application/ld+json")

@@ -3,7 +3,7 @@ name: Tests
 on: [push, pull_request]
 
 jobs:
-  test:
+  quality:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -16,17 +16,19 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+          cache: "pip"
 
       - name: Install dependencies
         run: |
           python -m venv .venv
           source .venv/bin/activate
+          python -m pip install --upgrade pip
           pip install -e ".[dev]"
 
       - name: Run tests with coverage
         run: |
           source .venv/bin/activate
-          pytest --cov=advanced_seo_mcp --cov-report=xml -v
+          PYTHONPATH=src pytest --cov=advanced_seo_mcp --cov-report=xml --cov-fail-under=70 -v
 
       - name: Ruff check
         run: |
@@ -36,4 +38,15 @@ jobs:
       - name: Mypy type check
         run: |
           source .venv/bin/activate
-          mypy src/ --ignore-missing-imports
+          PYTHONPATH=src mypy src/ --ignore-missing-imports
+
+      - name: Build package
+        run: |
+          source .venv/bin/activate
+          python -m build
+
+      - name: Smoke import
+        run: |
+          source .venv/bin/activate
+          python -c "import advanced_seo_mcp"
+          python -c "from advanced_seo_mcp.server import mcp; print(mcp.name)"

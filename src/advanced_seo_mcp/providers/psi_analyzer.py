@@ -5,6 +5,7 @@ from typing import Any
 from ..config import get_settings
 from ..http_client import SafeHTTPClient
 from ..models.psi import PageSpeedResult
+from ..responses import make_error_response
 from .base import BaseProvider
 
 
@@ -22,9 +23,12 @@ class PSIAnalyzer(BaseProvider):
         settings = get_settings()
 
         if not settings.has_psi:
-            return {
-                "error": "GOOGLE_PSI_API_KEY not configured — get one at https://developers.google.com/speed/docs/insights/v5/get-started"
-            }
+            return make_error_response(
+                code="missing_api_key",
+                message="GOOGLE_PSI_API_KEY not configured — get one at https://developers.google.com/speed/docs/insights/v5/get-started",
+                provider="psi",
+                details={"env_var": "GOOGLE_PSI_API_KEY"},
+            )
 
         endpoint = "https://www.googleapis.com/pagespeedonline/v5/runPagespeed"
         params = {
@@ -38,7 +42,12 @@ class PSIAnalyzer(BaseProvider):
             resp = await self.http.get(endpoint, params=params)
             data = resp.json()
         except Exception as exc:
-            return {"error": f"PageSpeed API error: {exc}"}
+            return make_error_response(
+                code="provider_request_failed",
+                message=f"PageSpeed API error: {exc}",
+                provider="psi",
+                retryable=True,
+            )
 
         lighthouse = data.get("lighthouseResult", {})
         audits = lighthouse.get("audits", {})

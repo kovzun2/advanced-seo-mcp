@@ -30,6 +30,7 @@ async def test_sitemap_no_sitemap(auditor: SitemapAuditor):
     )
     result = await auditor.analyze("https://example.com", limit=2)
     assert "error" in result
+    assert result["error"]["code"] == "sitemap_missing"
 
 
 @respx.mock
@@ -48,4 +49,29 @@ async def test_sitemap_found(auditor: SitemapAuditor):
     )
     result = await auditor.analyze("https://example.com", limit=1)
     assert "error" not in result
+    assert result["total_in_sitemap"] == 2
+
+
+@respx.mock
+@pytest.mark.anyio
+async def test_sitemap_index_supported(auditor: SitemapAuditor):
+    sitemap_index = """<?xml version="1.0" encoding="UTF-8"?>
+    <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+        <sitemap><loc>https://example.com/posts.xml</loc></sitemap>
+    </sitemapindex>"""
+    posts_xml = """<?xml version="1.0" encoding="UTF-8"?>
+    <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+        <url><loc>https://example.com/post-1</loc></url>
+        <url><loc>https://example.com/post-2</loc></url>
+    </urlset>"""
+    respx.get("https://example.com/sitemap.xml").mock(
+        return_value=httpx.Response(200, text=sitemap_index)
+    )
+    respx.get("https://example.com/posts.xml").mock(
+        return_value=httpx.Response(200, text=posts_xml)
+    )
+    respx.get("https://example.com/post-1").mock(
+        return_value=httpx.Response(200, text="<html><body><h1>Post</h1></body></html>")
+    )
+    result = await auditor.analyze("https://example.com", limit=1)
     assert result["total_in_sitemap"] == 2
